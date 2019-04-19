@@ -34,6 +34,7 @@ const parseFrontmatter = require('../html/parse-frontmatter');
 const rewriteLinks = require('../html/static-asset-links');
 const tohast = require('../html/html-to-hast');
 const tohtml = require('../html/stringify-hast');
+const sanitize = require('../html/sanitize');
 
 /* eslint no-param-reassign: off */
 /* eslint newline-per-chained-call: off */
@@ -61,6 +62,7 @@ const htmlpipe = (cont, payload, action) => {
     .before(html).expose('html')
     .before(responsive)
     .once(cont)
+    .after(sanitize)
     .after(type('text/html'))
     .after(cache).when(uncached)
     .after(key)
