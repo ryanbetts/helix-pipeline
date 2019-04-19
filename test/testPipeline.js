@@ -77,7 +77,6 @@ describe('Testing Pipeline', () => {
 
     // inject explicit extension points
     [first, second, third, fourth].forEach((f) => {
-      // eslint-disable-next-line no-param-reassign
       f.ext = f.name;
     });
 
@@ -116,7 +115,6 @@ describe('Testing Pipeline', () => {
 
     // inject explicit extension points
     [first, second, third, fourth].forEach((f) => {
-      // eslint-disable-next-line no-param-reassign
       f.ext = f.name;
     });
 

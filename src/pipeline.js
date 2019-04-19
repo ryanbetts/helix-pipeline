@@ -10,8 +10,11 @@
  * governing permissions and limitations under the License.
  */
 
+/* eslint-disable no-await-in-loop */
+
 const _ = require('lodash/fp');
 const callsites = require('callsites');
+const { enumerate } = require('@adobe/helix-shared').sequence;
 const coerce = require('./utils/coerce-secrets');
 
 const noOp = () => {};
@@ -290,17 +293,11 @@ class Pipeline {
     if (f.alias) {
       return f.alias;
     }
-    if (!f.alias && f.name) {
-      // eslint-disable-next-line no-param-reassign
-      f.alias = f.name;
-    } else if (!f.name && !f.alias) {
-      // eslint-disable-next-line no-param-reassign
-      f.alias = 'anonymous';
-    }
+
+    f.alias = f.name || f.ext || 'anonymous';
 
     const [current, injector, caller] = callsites();
     if (current.getFunctionName() === 'describe') {
-      // eslint-disable-next-line no-param-reassign
       f.alias = `${injector.getFunctionName()}:${f.alias} from ${caller.getFileName()}:${caller.getLineNumber()}`;
     }
 
@@ -313,66 +310,52 @@ class Pipeline {
    * @returns {Promise<Context>} Promise that resolves to the final result of the accumulated
    * context.
    */
-  async run(context = {}) {
-    // register all custom attachers to the pipeline
-    this.attach(this._oncef);
-    /**
-     * Reduction function used to process the pipeline functions and merge the context parameters.
-     * @param {Object} currContext Accumulated context
-     * @param {pipelineFunction} currFunction Function that is currently "reduced"
-     * @param {number} index index of the function in the given array
-     * @returns {Promise} Promise resolving to the new value of the accumulator
-     */
-    const merge = async (currContext, currFunction, index) => {
-      const skip = (!currContext.error) === (!!currFunction.errorHandler);
+  async run(context) {
+    const { logger } = this._action;
 
-      // log the function that is being called and the parameters of the function
-      this._action.logger.silly(skip ? 'skipping ' : 'processing ', {
-        function: this.describe(currFunction),
-        index,
-        params: currContext,
-      });
+    let currentlyExecuting;
 
-      if (skip) {
-        return currContext;
+    const getident = (fn, classifier, idx) => `${classifier} #${idx}/${this.describe(fn)}`;
+
+    const execTaps = async (ident) => {
+      for (const [idx, t] of enumerate(this._taps)) {
+        currentlyExecuting = `${getident(t, 'Tap function', idx)} before ${ident}`;
+        await t(context, this._action);
       }
-
-      // copy the pipeline payload into a new object to avoid modifications
-      // TODO: Better way of write-protecting the args for tapped functions; this may lead
-      // to weird bugs in user's code because modification seems to work but in
-      // fact the modification results are ignored; this one also has the draw
-      // TODO: This is also inefficient
-      // TODO: This also only works for objects and arrays; any data of custom type (e.g. DOM)
-      // is overwritten
-      const mergedargs = _.merge({}, currContext);
-      const tapresults = this._taps.map((f) => {
-        try {
-          return f(mergedargs, this._action, index);
-        } catch (e) {
-          return Promise.reject(e);
-        }
-      });
-
-      return Promise.all(tapresults)
-        .then(() => Promise.resolve(currFunction(mergedargs, this._action))
-          .then((value) => {
-            const result = currFunction.does_mutate ? mergedargs : _.merge(currContext, value);
-            this._action.logger.silly('received ', { function: this.describe(currFunction), result });
-            return result;
-          })).catch((e) => {
-          // tapping failed
-          this._action.logger.error(`tapping failed: ${e.stack}`);
-          return {
-            error: `${currContext.error || ''}\n${e.stack || ''}`,
-          };
-        });
     };
 
-    // go over inner.pres (those that run before), inner.oncef (the function that runs once)
-    // and inner.posts (those that run after) – reduce using the merge function and return
-    // the resolved value
-    return [...this._pres, this._oncef, ...this._posts]
-      .reduce(async (ctx, fn, index) => merge(await ctx, fn, index), context);
+    const execFns = async (fns, classifier) => {
+      for (const [idx, f] of enumerate(fns)) {
+        const ident = getident(f, classifier, idx);
+
+        await execTaps(ident);
+
+        currentlyExecuting = ident;
+        await f(context, this._action);
+      }
+    };
+
+    try {
+      console.log(this._pres);
+      await execFns(this._pres, 'Pre function');
+      await execFns([this._oncef], 'Once function');
+      await execFns(this._posts, 'Post function');
+    } catch (e) {
+      const modified = `Exception during pipeline execution: ${currentlyExecuting}:\n${e.stack}`;
+      logger.error(modified);
+
+      // This is non standard; doing this late to avoid any errors;
+      // since we already printed the error, any impact of this being
+      // wrong should not have a big impact
+      try {
+        e.stack = modified;
+      } catch (e2) {
+        logger.warning(`Unexpected error ${e2}\n${e2.stack}`);
+      }
+
+      context.error = e;
+      context.response = { status: 500 };
+    }
   }
 }
 

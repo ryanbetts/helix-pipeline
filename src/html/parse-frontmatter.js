@@ -301,7 +301,5 @@ const parseFrontmatter = ({ content: { mdast, body } }) => {
   }
 };
 
-parseFrontmatter.does_mutate = true;
 assign(parseFrontmatter, { findFrontmatter, FrontmatterParsingError });
-
 module.exports = parseFrontmatter;

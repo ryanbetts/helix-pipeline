@@ -10,44 +10,25 @@
  * governing permissions and limitations under the License.
  */
 
-function setVerboseError(error) {
-  const res = {
-    response: {
-      status: 500,
-      body: `<?xml version="1.0" encoding="utf-8"?><error><code>500</code><message>${error.trim()}</message></error>`,
-      headers: {
-        'Content-Type': 'application/xml',
-      },
-    },
-  };
-  return res;
-}
+const { setdefault } = require('@adobe/helix-shared').types;
 
-function selectStatus(prod) {
-  return ({ response = {}, error }, { logger }) => {
-    // if a status is already default, keep it.
-    if (response.status) {
-      return {};
-    }
-    if (!error) {
-      return {
-        response: {
-          status: 200,
-        },
-      };
-    }
-    // error handling
+function setStatus(context, { logger }) {
+  const res = setdefault(context, 'response', {});
+  const err = context.error;
+
+  // if a status is already default, keep it.
+  if (res.status) {
+    return;
+  }
+
+  res.status = 200;
+
+  // if there is an error, send a 500
+  if (err) {
     logger.debug('payload.error -> 500');
-    if (prod) {
-      return {
-        response: {
-          status: 500,
-          body: '',
-        },
-      };
-    }
-    return setVerboseError(error);
-  };
+    res.status = 500;
+    res.body = `<?xml version="1.0" encoding="utf-8"?><error><code>500</code><message>${err.trim()}</message></error>`;
+  }
 }
 
 function setStatus({ response = {}, error }, { logger }) {

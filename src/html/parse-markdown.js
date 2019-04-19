@@ -12,11 +12,10 @@
 const unified = require('unified');
 const remark = require('remark-parse');
 
-function parseMarkdown({ content: { body = '' } = {} }, { logger }) {
+function parseMarkdown({ content }, { logger }) {
+  const { body = '' } = content;
   logger.debug(`Parsing markdown from request body starting with ${body.split('\n')[0]}`);
-  const preprocessor = unified().use(remark);
-  const mdast = preprocessor.parse(body);
-  return { content: { mdast } };
+  content.mdast = unified().use(remark).parse(body || '');
 }
 
 module.exports = parseMarkdown;

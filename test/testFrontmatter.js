@@ -46,7 +46,6 @@ const ck = (wat, md, ast) => {
     const nodes = flattenTree(proc,
       (node, recurse) => concat([node], recurse(node.children || [])));
     each(nodes, (node) => {
-      /* eslint-disable-next-line no-param-reassign */
       delete node.position;
     });
     assert.deepStrictEqual(proc.children, yaml.safeLoad(ast));

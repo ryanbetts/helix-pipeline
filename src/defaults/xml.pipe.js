@@ -29,7 +29,6 @@ const { selectStatus } = require('../xml/set-xml-status.js');
 const check = require('../xml/check-xml');
 const parseFrontmatter = require('../html/parse-frontmatter');
 
-/* eslint no-param-reassign: off */
 /* eslint newline-per-chained-call: off */
 
 const xmlpipe = (cont, payload, action) => {

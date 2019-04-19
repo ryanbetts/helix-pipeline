@@ -11,12 +11,12 @@
  */
 const { select, selectAll } = require('unist-util-select');
 const plain = require('mdast-util-to-string');
+const { empty } = require('@adobe/helix-shared').types;
 const { flat, obj, map } = require('@adobe/helix-shared').sequence;
 
 
 function yaml(section) {
   const yamls = selectAll('yaml', section);
-  /* eslint-disable-next-line no-param-reassign */
   section.meta = obj(flat(map(yamls, ({ payload }) => payload)));
   return section;
 }
@@ -77,7 +77,6 @@ function sectiontype(section) {
   function reducer(counter, node) {
     const { type, children: pChildren } = node;
 
-    // eslint-disable-next-line no-param-reassign
     node.data = Object.assign({ types: [] }, node.data);
 
     if (type === 'yaml') {
@@ -144,28 +143,25 @@ function fallback(section) {
   return section;
 }
 
-function getmetadata({ content: { sections = [] } }, { logger }) {
+function getmetadata(context, { logger }) {
+  const { content } = context;
+  const { sections } = content;
   logger.debug(`Parsing Markdown Metadata from ${sections.length} sections`);
 
-  const retsections = sections
+  sections
     .map(yaml)
     .map(title)
     .map(intro)
     .map(image)
     .map(sectiontype)
     .map(fallback);
-  const img = retsections.filter(section => section.image)[0];
-  if (retsections[0]) {
-    const retcontent = {
-      sections: retsections,
-      meta: retsections[0].meta,
-      title: retsections[0].title,
-      intro: retsections[0].intro,
-      image: img ? img.image : undefined,
-    };
-    return { content: retcontent };
-  }
-  return { content: { meta: {} } };
+
+  const img = sections.filter(section => section.image)[0];
+
+  content.meta = empty(sections) ? {} : sections[0].meta;
+  content.title = empty(sections) ? '' : sections[0].title;
+  content.intro = empty(sections) ? '' : sections[0].intro;
+  content.image = empty(sections) ? undefined : img.image;
 }
 
 module.exports = getmetadata;

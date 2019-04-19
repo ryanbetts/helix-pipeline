@@ -45,6 +45,10 @@ module.exports = {
     // allow dangling underscores for 'fields'
     'no-underscore-dangle': ['error', {'allowAfterThis': true}],
 
+    // We have quite a lot of use cases where assignment to function
+    // parameters is definitely desirable
+    'no-param-reassign': 'off',
+
     // enforce license header
     'header/header': [2, 'block', ['',
       { pattern: ' * Copyright \\d{4} Adobe\\. All rights reserved\\.', template: ' * Copyright 2019 Adobe. All rights reserved.'},
