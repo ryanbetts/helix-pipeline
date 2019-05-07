@@ -336,12 +336,11 @@ class Pipeline {
     };
 
     try {
-      console.log(this._pres);
       await execFns(this._pres, 'Pre function');
       await execFns([this._oncef], 'Once function');
       await execFns(this._posts, 'Post function');
     } catch (e) {
-      const modified = `Exception during pipeline execution: ${currentlyExecuting}:\n${e.stack}`;
+      const modified = `Exception during pipeline execution:\n${currentlyExecuting}:\n${e.stack}`;
       logger.error(modified);
 
       // This is non standard; doing this late to avoid any errors;
@@ -356,6 +355,7 @@ class Pipeline {
       context.error = e;
       context.response = { status: 500 };
     }
+    return context;
   }
 }
 

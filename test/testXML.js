@@ -150,9 +150,9 @@ describe('Testing XML Pipeline', () => {
           },
         };
         // assert that pre-processing has happened
-        assert.ok(content.body);
         assert.ok(content.mdast);
         assert.ok(content.meta);
+        console.log(content.meta)
         assert.equal(content.meta.template, 'Medium');
         assert.equal(content.intro, 'Project Helix');
         assert.equal(content.title, 'Bill, Welcome to the future');
@@ -247,7 +247,6 @@ describe('Testing XML Pipeline', () => {
       {
         request: { params },
         secrets,
-        logger,
       },
     );
 

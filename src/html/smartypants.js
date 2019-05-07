@@ -13,7 +13,10 @@ const retext = require('retext');
 const map = require('unist-util-map');
 const smartypants = require('retext-smartypants');
 
-function reformat({ content: { mdast } }) {
+function reformat({ content: { mdast } = {}}) {
+  if (!mdast) {
+    return;
+  }
   const smart = retext().use(smartypants);
   map(mdast, (node) => {
     if (node.type === 'text') {

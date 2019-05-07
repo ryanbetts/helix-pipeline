@@ -11,29 +11,32 @@
  */
 
 const { setdefault } = require('@adobe/helix-shared').types;
+const isProduction = require('../utils/is-production');
 
 function setStatus(context, { logger }) {
   const res = setdefault(context, 'response', {});
+  const headers = setdefault(res, 'headers', {});
   const err = context.error;
+
 
   // if a status is already default, keep it.
   if (res.status) {
     return;
   }
 
-  res.status = 200;
+  if (!err) {
+    res.status = 200;
+    return;
+  }
 
-  // if there is an error, send a 500
-  if (err) {
-    logger.debug('payload.error -> 500');
-    res.status = 500;
+  logger.debug('payload.error -> 500');
+  res.status = 500;
+  res.body = '';
+
+  if (!isProduction()) {
     res.body = `<?xml version="1.0" encoding="utf-8"?><error><code>500</code><message>${err.trim()}</message></error>`;
+    headers['Content-Type'] = 'application/xml';
   }
 }
 
-function setStatus({ response = {}, error }, { logger }) {
-  return selectStatus(false)({ response, error }, { logger });
-}
-
 module.exports = setStatus;
-module.exports.selectStatus = selectStatus;
